@@ -69,14 +69,14 @@ app.post('/v1/chat/completions', async (req, res) => {
       let hasToolCall = false;
       
       await generateAssistantResponse(requestBody, (data) => {
-        if (data.type === 'tool_call') {
+        if (data.type === 'tool_calls') {
           hasToolCall = true;
           res.write(`data: ${JSON.stringify({
             id,
             object: 'chat.completion.chunk',
             created,
             model,
-            choices: [{ index: 0, delta: { tool_calls: [data.tool_call] }, finish_reason: null }]
+            choices: [{ index: 0, delta: { tool_calls: data.tool_calls }, finish_reason: null }]
           })}\n\n`);
         } else {
           res.write(`data: ${JSON.stringify({
@@ -102,8 +102,8 @@ app.post('/v1/chat/completions', async (req, res) => {
       let fullContent = '';
       let toolCalls = [];
       await generateAssistantResponse(requestBody, (data) => {
-        if (data.type === 'tool_call') {
-          toolCalls.push(data.tool_call);
+        if (data.type === 'tool_calls') {
+          toolCalls = data.tool_calls;
         } else {
           fullContent += data.content;
         }

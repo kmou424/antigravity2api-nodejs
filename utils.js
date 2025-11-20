@@ -108,20 +108,26 @@ function handleToolCall(message, antigravityMessages){
     }
   }
   
-  antigravityMessages.push({
-    role: "user",
-    parts: [
-      {
-        functionResponse: {
-          id: message.tool_call_id,
-          name: functionName,
-          response: {
-            output: message.content
-          }
-        }
+  const lastMessage = antigravityMessages[antigravityMessages.length - 1];
+  const functionResponse = {
+    functionResponse: {
+      id: message.tool_call_id,
+      name: functionName,
+      response: {
+        output: message.content
       }
-    ]
-  })
+    }
+  };
+  
+  // 如果上一条消息是 user 且包含 functionResponse，则合并
+  if (lastMessage?.role === "user" && lastMessage.parts.some(p => p.functionResponse)) {
+    lastMessage.parts.push(functionResponse);
+  } else {
+    antigravityMessages.push({
+      role: "user",
+      parts: [functionResponse]
+    });
+  }
 }
 function openaiMessageToAntigravity(openaiMessages){
   const antigravityMessages = [];

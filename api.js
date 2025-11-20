@@ -26,6 +26,7 @@ export async function generateAssistantResponse(requestBody, callback) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let thinkingStarted = false;
+  let toolCalls = [];
 
   while (true) {
     const { done, value } = await reader.read();
@@ -54,23 +55,26 @@ export async function generateAssistantResponse(requestBody, callback) {
               }
               callback({ type: 'text', content: part.text });
             } else if (part.functionCall) {
-              if (thinkingStarted) {
-                callback({ type: 'thinking', content: '\n</think>\n' });
-                thinkingStarted = false;
-              }
-              callback({ 
-                type: 'tool_call', 
-                tool_call: {
-                  id: part.functionCall.id,
-                  type: 'function',
-                  function: {
-                    name: part.functionCall.name,
-                    arguments: JSON.stringify(part.functionCall.args)
-                  }
+              toolCalls.push({
+                id: part.functionCall.id,
+                type: 'function',
+                function: {
+                  name: part.functionCall.name,
+                  arguments: JSON.stringify(part.functionCall.args)
                 }
               });
             }
           }
+        }
+        
+        // 当遇到 finishReason 时，发送所有收集的工具调用
+        if (data.response?.candidates?.[0]?.finishReason && toolCalls.length > 0) {
+          if (thinkingStarted) {
+            callback({ type: 'thinking', content: '\n</think>\n' });
+            thinkingStarted = false;
+          }
+          callback({ type: 'tool_calls', tool_calls: toolCalls });
+          toolCalls = [];
         }
       } catch (e) {
         // 忽略解析错误
