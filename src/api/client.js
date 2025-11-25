@@ -1,5 +1,6 @@
 import tokenManager from '../auth/token_manager.js';
 import config from '../config/config.js';
+import { generateToolCallId } from '../utils/idGenerator.js';
 
 export async function generateAssistantResponse(requestBody, callback) {
   const token = await tokenManager.getToken();
@@ -64,7 +65,7 @@ export async function generateAssistantResponse(requestBody, callback) {
               callback({ type: 'text', content: part.text });
             } else if (part.functionCall) {
               toolCalls.push({
-                id: part.functionCall.id,
+                id: part.functionCall.id || generateToolCallId(),
                 type: 'function',
                 function: {
                   name: part.functionCall.name,

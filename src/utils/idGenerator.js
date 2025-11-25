@@ -16,8 +16,14 @@ function generateProjectId() {
   const randomNum = Math.random().toString(36).substring(2, 7);
   return `${randomAdj}-${randomNoun}-${randomNum}`;
 }
+
+function generateToolCallId() {
+  return `call_${randomUUID().replace(/-/g, '')}`;
+}
+
 export {
     generateProjectId,
     generateSessionId,
-    generateRequestId
+    generateRequestId,
+    generateToolCallId
 }
