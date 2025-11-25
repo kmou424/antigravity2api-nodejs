@@ -64,11 +64,13 @@ app.post('/v1/chat/completions', async (req, res) => {
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       
-      const id = `chatcmpl-${Date.now()}`;
+      const id = `chatcmpl-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       const created = Math.floor(Date.now() / 1000);
       let hasToolCall = false;
+      let finalFinishReason = 'stop';
+      let usage = null;
       
-      await generateAssistantResponse(requestBody, (data) => {
+      const metadata = await generateAssistantResponse(requestBody, (data) => {
         if (data.type === 'tool_calls') {
           hasToolCall = true;
           res.write(`data: ${JSON.stringify({
@@ -76,36 +78,75 @@ app.post('/v1/chat/completions', async (req, res) => {
             object: 'chat.completion.chunk',
             created,
             model,
-            choices: [{ index: 0, delta: { tool_calls: data.tool_calls }, finish_reason: null }]
+            choices: [{ 
+              index: 0, 
+              delta: { tool_calls: data.tool_calls }, 
+              finish_reason: null,
+              logprobs: null
+            }]
           })}\n\n`);
+        } else if (data.type === 'thinking') {
+          // 思考过程可以作为系统消息的一部分，但 OpenAI 格式不直接支持
+          // 这里可以选择忽略或作为内容的一部分
         } else {
           res.write(`data: ${JSON.stringify({
             id,
             object: 'chat.completion.chunk',
             created,
             model,
-            choices: [{ index: 0, delta: { content: data.content }, finish_reason: null }]
+            choices: [{ 
+              index: 0, 
+              delta: { content: data.content }, 
+              finish_reason: null,
+              logprobs: null
+            }]
           })}\n\n`);
         }
       });
       
-      res.write(`data: ${JSON.stringify({
+      // 使用返回的元数据
+      if (metadata) {
+        finalFinishReason = metadata.finish_reason || (hasToolCall ? 'tool_calls' : 'stop');
+        usage = metadata.usage;
+      } else {
+        finalFinishReason = hasToolCall ? 'tool_calls' : 'stop';
+      }
+      
+      // 发送最终 chunk（包含 finish_reason 和 usage）
+      const finalChunk = {
         id,
         object: 'chat.completion.chunk',
         created,
         model,
-        choices: [{ index: 0, delta: {}, finish_reason: hasToolCall ? 'tool_calls' : 'stop' }]
-      })}\n\n`);
+        choices: [{ 
+          index: 0, 
+          delta: {}, 
+          finish_reason: finalFinishReason,
+          logprobs: null
+        }]
+      };
+      
+      // 如果 usage 信息可用，添加到最终 chunk 中（OpenAI 格式支持）
+      if (usage) {
+        finalChunk.usage = usage;
+      }
+      
+      res.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
+      
       res.write('data: [DONE]\n\n');
       res.end();
     } else {
       let fullContent = '';
       let toolCalls = [];
-      await generateAssistantResponse(requestBody, (data) => {
+      let thinkingContent = '';
+      
+      const metadata = await generateAssistantResponse(requestBody, (data) => {
         if (data.type === 'tool_calls') {
           toolCalls = data.tool_calls;
+        } else if (data.type === 'thinking') {
+          thinkingContent += data.content;
         } else {
-          fullContent += data.content;
+          fullContent += data.content || '';
         }
       });
       
@@ -114,17 +155,37 @@ app.post('/v1/chat/completions', async (req, res) => {
         message.tool_calls = toolCalls;
       }
       
-      res.json({
-        id: `chatcmpl-${Date.now()}`,
+      // 确定 finish_reason
+      let finishReason = 'stop';
+      if (toolCalls.length > 0) {
+        finishReason = 'tool_calls';
+      } else if (metadata?.finish_reason) {
+        finishReason = metadata.finish_reason;
+      }
+      
+      // 构建响应对象
+      const response = {
+        id: `chatcmpl-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         object: 'chat.completion',
         created: Math.floor(Date.now() / 1000),
-        model,
+        model: model || 'unknown',
         choices: [{
           index: 0,
           message,
-          finish_reason: toolCalls.length > 0 ? 'tool_calls' : 'stop'
+          finish_reason: finishReason,
+          logprobs: null
         }]
-      });
+      };
+      
+      // 添加 usage 信息（如果可用）
+      if (metadata?.usage) {
+        response.usage = metadata.usage;
+      }
+      
+      // 添加 system_fingerprint（可选字段，用于标识模型版本）
+      response.system_fingerprint = null;
+      
+      res.json(response);
     }
   } catch (error) {
     logger.error('生成响应失败:', error.message);
@@ -133,21 +194,31 @@ app.post('/v1/chat/completions', async (req, res) => {
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
-        const id = `chatcmpl-${Date.now()}`;
+        const id = `chatcmpl-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         const created = Math.floor(Date.now() / 1000);
         res.write(`data: ${JSON.stringify({
           id,
           object: 'chat.completion.chunk',
           created,
-          model,
-          choices: [{ index: 0, delta: { content: `错误: ${error.message}` }, finish_reason: null }]
+          model: model || 'unknown',
+          choices: [{ 
+            index: 0, 
+            delta: { content: `错误: ${error.message}` }, 
+            finish_reason: null,
+            logprobs: null
+          }]
         })}\n\n`);
         res.write(`data: ${JSON.stringify({
           id,
           object: 'chat.completion.chunk',
           created,
-          model,
-          choices: [{ index: 0, delta: {}, finish_reason: 'stop' }]
+          model: model || 'unknown',
+          choices: [{ 
+            index: 0, 
+            delta: {}, 
+            finish_reason: 'stop',
+            logprobs: null
+          }]
         })}\n\n`);
         res.write('data: [DONE]\n\n');
         res.end();
