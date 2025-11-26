@@ -64,7 +64,7 @@ app.post('/v1/chat/completions', async (req, res) => {
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       
-      const id = `chatcmpl-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const id = `chatcmpl-${Date.now()}`;
       const created = Math.floor(Date.now() / 1000);
       let hasToolCall = false;
       let finalFinishReason = 'stop';
@@ -165,7 +165,7 @@ app.post('/v1/chat/completions', async (req, res) => {
       
       // 构建响应对象
       const response = {
-        id: `chatcmpl-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        id: `chatcmpl-${Date.now()}`,
         object: 'chat.completion',
         created: Math.floor(Date.now() / 1000),
         model: model || 'unknown',
@@ -194,7 +194,7 @@ app.post('/v1/chat/completions', async (req, res) => {
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
-        const id = `chatcmpl-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        const id = `chatcmpl-${Date.now()}`;
         const created = Math.floor(Date.now() / 1000);
         res.write(`data: ${JSON.stringify({
           id,
