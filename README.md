@@ -1,6 +1,20 @@
-# Antigravity to OpenAI API 代理服务
+# AntiGravity2OpenAI API 代理服务
 
-将 Google Antigravity API 转换为 OpenAI 兼容格式的代理服务，支持流式响应、工具调用和多账号管理。
+> 本项目是在 [AntiGravity2API-NodeJS](https://github.com/liuw1535/antigravity2api-nodejs) 基础上的二次开发版本，因原项目暂不接受合并请求（PR），因此以独立分支形式进行，并对功能和性能作了多项优化与改进。
+
+将 Google AntiGravity API 转换为 OpenAI 兼容格式的代理服务，支持流式响应、工具调用和多账号管理。
+
+## Changes
+
+- [x] [BUG] 使用符合 OpenAI 规范的响应结构，增强兼容性
+- [x] [BUG] 修复向实际后端请求时始终使用流式请求的问题，现非流式请求将会直接命中非流式后端接口
+- [x] [PERF] 移除了始终固定的系统提示词，根据 OpenAI 格式请求的连续 system 消息自动转换为 Gemini 格式请求的 system_instruction 参数 (Thanks to [hajimi](https://github.com/wyeeeee/hajimi/blob/0b68a2f4458ffe48004d523b87e5b254b1e45c10/app/services/gemini.py#L345))
+- [x] [FEATURE] 增加了 Docker 支持
+
+## TODO
+
+- [ ] [REFACTOR] 迁移到 Bun 运行时
+- [ ] [REFACTOR] 使用 TypeScript 重构（类型安全）
 
 ## 功能特性
 
@@ -239,4 +253,14 @@ npm run login
 
 ## License
 
-MIT
+本项目采用 [CC BY-NC-SA 4.0](LICENSE) 协议，仅供学习使用，禁止商用。
+
+知识共享 署名-非商业性使用-相同方式共享 4.0 国际许可协议  
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+
+**原作品版权所有 © 2025 [liuw1535]**  
+**本修改版本版权所有 © 2025 [kmou424]**
+
+本作品基于 [liuw1535](https://github.com/liuw1535/antigravity2api-nodejs) 的原作品进行修改和二次开发。
+
+完整协议文本请访问：[LICENSE](LICENSE)

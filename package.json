@@ -1,5 +1,5 @@
 {
-  "name": "antigravity-to-openai",
+  "name": "antigravity2openai",
   "version": "1.0.0",
   "description": "Antigravity API 转 OpenAI 格式的代理服务",
   "type": "module",
